@@ -112,9 +112,9 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 <main class="wrap">
   <section id="v-plan">
     <h2>Day by day</h2><p class="sub">Tap a day, add stops. Everyone sees changes live.</p>
+    <div class="bar" style="margin:0 0 14px"><button class="btn" data-new="stops" type="button">Add stop</button></div>
     <div class="days" id="days"></div>
     <div class="list" id="stops"></div>
-    <div class="bar"><button class="btn" data-new="stops" type="button">Add stop</button></div>
   </section>
   <section id="v-tickets" hidden>
     <h2>Tickets</h2><p class="sub">Everyone booked separately, so each person adds their own PNR, seat and e-ticket here. Your entry never overwrites anyone else's.</p>
@@ -127,8 +127,8 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   </section>
   <section id="v-bookings" hidden>
     <h2>Bookings</h2><p class="sub">Flights, stays, transfers and tickets, with confirmation numbers.</p>
-    <div class="list" id="bookings"></div>
     <div class="bar"><button class="btn" data-new="bookings" data-kind="Flight" type="button">Add air ticket</button><button class="btn ghost" data-new="bookings" type="button">Add other booking</button></div>
+    <div class="list" id="bookings"></div>
   </section>
   <section id="v-lists" hidden>
     <h2>Packing &amp; to-dos</h2><p class="sub">Tick things off; assign them to someone.</p>
