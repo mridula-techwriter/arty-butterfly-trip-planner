@@ -1,6 +1,6 @@
 {
-  "name": "Kolkata Trip Planner",
-  "short_name": "Kolkata Trip",
+  "name": "Art Butterfly Travel App",
+  "short_name": "Art Butterfly",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

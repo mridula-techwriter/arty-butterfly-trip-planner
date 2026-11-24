@@ -1,5 +1,5 @@
-// Kolkata Trip Planner service worker: app shell offline, always try network first.
-const CACHE = 'trip-shell-v2';
+// Art Butterfly Travel App service worker: app shell offline, always try network first.
+const CACHE = 'trip-shell-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
