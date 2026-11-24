@@ -1,5 +1,5 @@
 // Art Butterfly Travel App service worker: app shell offline, always try network first.
-const CACHE = 'trip-shell-v3';
+const CACHE = 'trip-shell-v5';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -17,6 +17,6 @@ self.addEventListener('fetch', e => {
     fetch(req).then(res => {
       if (res && (res.ok || res.type === 'opaque')) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
       return res;
-    }).catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
+    }).catch(() => caches.match(req).then(r => r || (req.mode === 'navigate' ? caches.match('./index.html') : Response.error())))
   );
 });

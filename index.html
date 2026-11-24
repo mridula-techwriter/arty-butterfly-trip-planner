@@ -107,7 +107,7 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   <button class="btn" id="installBtn" type="button" hidden style="margin:10px 0 0">Install app</button>
 </header>
 <nav><div class="in" id="tabs">
-  <a href="#plan">Itinerary</a><a href="#bookings">Bookings</a><a href="#lists">Packing &amp; to-dos</a><a href="#money">Expenses</a><a href="#trip">Trip &amp; people</a><a href="#print">Print</a>
+  <a href="#plan">Itinerary</a><a href="#bookings">Bookings</a><a href="#tickets">Tickets</a><a href="#reminders">Reminders</a><a href="#lists">Packing &amp; to-dos</a><a href="#money">Expenses</a><a href="#trip">Trip &amp; people</a><a href="#print">Print</a>
 </div></nav>
 <main class="wrap">
   <section id="v-plan">
@@ -115,6 +115,15 @@ body{padding-bottom:env(safe-area-inset-bottom)}
     <div class="days" id="days"></div>
     <div class="list" id="stops"></div>
     <div class="bar"><button class="btn" data-new="stops" type="button">Add stop</button></div>
+  </section>
+  <section id="v-tickets" hidden>
+    <h2>Tickets</h2><p class="sub">Everyone booked separately, so each person adds their own PNR, seat and e-ticket here. Your entry never overwrites anyone else's.</p>
+    <div id="tickets"></div>
+  </section>
+  <section id="v-reminders" hidden>
+    <h2>Reminders</h2><p class="sub">Tap <b>Add to my calendar</b> so your phone reminds you. Reminders with email on are also emailed at that time to the people they're for (emails are set in Trip &amp; people).</p>
+    <div class="bar"><button class="btn" data-new="reminders" type="button">Add reminder</button></div>
+    <div class="list" id="reminders"></div>
   </section>
   <section id="v-bookings" hidden>
     <h2>Bookings</h2><p class="sub">Flights, stays, transfers and tickets, with confirmation numbers.</p>
@@ -173,13 +182,14 @@ const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl=u=>/^https:\/\//i.test(u||'')?u:'';
 const DEF={destination:'',start:'2027-02-04',end:'2027-02-07',currency:'₹',people:[{id:'p1',name:'Traveller 1',shares:true},{id:'p2',name:'Traveller 2',shares:true},{id:'p3',name:'Traveller 3',shares:true},{id:'p4',name:'Traveller 4',shares:false}]};
-const S={meta:DEF,stops:[],bookings:[],lists:[],expenses:[],day:null,canWrite:true};
+const S={meta:DEF,stops:[],bookings:[],lists:[],expenses:[],reminders:[],day:null,canWrite:true};
 let db=null,assetsNS=null;
 const KINDS=['Flight','Train','Hotel','Car / transfer','Activity','Other'];
 const CATS=['Food','Stay','Travel','Activities','Shopping','Other'];
 const FORMS={
  stops:{title:'Stop',f:[['day','Day','day'],['time','Time','time'],['title','What','text',1],['place','Place (for map link)','text'],['link','Link (https://…)','url'],['notes','Notes','area']]},
  bookings:{title:'Booking',f:[['kind','Type','sel',0,KINDS],['title','Name (airline, hotel…)','text',1],['ref','Confirmation / PNR','text'],['date','Date','date'],['time','Time','time'],['details','Details','area'],['link','Link (https://…)','url']]},
+ reminders:{title:'Reminder',f:[['text','Remind about','text',1],['rdate','Date','date',1],['rtime','Time','time',1],['who','For','whosel'],['email','Email reminder','yn'],['notes','Notes','area']]},
  expenses:{title:'Expense',f:[['desc','What for','text',1],['amount','Amount','num',1],['paidBy','Paid by','person'],['date','Which day','tday'],['cat','Category','sel',0,CATS]]}
 };
 const people=()=>Array.isArray(S.meta.people)&&S.meta.people.length?S.meta.people:DEF.people;
@@ -206,7 +216,7 @@ function renderPlan(){
  $('#days').innerHTML=ds.map((d,i)=>{const lab=i===0?'Departure':i===ds.length-1?'Return':'Day '+(i+1);return `<button class="day" type="button" data-day="${d}" aria-pressed="${d===S.day}"><small>${lab}</small>${esc(fmt(parse(d)))}</button>`}).join('');
  const st=S.stops.filter(s=>s.day===S.day).sort(byTime);
  const bk=S.bookings.filter(b=>b.date===S.day).sort(byTime);
- const rows=[...bk.map(b=>row('bookings',b,b.time,`<span class="tag">${esc(b.kind||'Booking')}</span>${esc(b.title)}`,[b.ref&&'Ref '+esc(b.ref),esc(b.details),tlink(b)])),...st.map(s=>row('stops',s,s.time,esc(s.title),[s.place&&`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.place)}" target="_blank" rel="noopener">${esc(s.place)} ↗</a>`,safeUrl(s.link)&&`<a href="${esc(s.link)}" target="_blank" rel="noopener">Open link ↗</a>`,esc(s.notes)]))];
+ const rows=[...bk.map(b=>row('bookings',b,b.time,`<span class="tag">${esc(b.kind||'Booking')}</span>${esc(b.title)}`,[b.ref&&'Ref '+esc(b.ref),b.kind==='Flight'&&`<a href="#tickets">${esc(paxSummary(b))} ›</a>`,esc(b.details),tlink(b),b.time&&calLink(b.title,b.date+'T'+b.time,b.kind==='Flight'?150:60,b.details||'')])),...st.map(s=>row('stops',s,s.time,esc(s.title),[s.place&&`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.place)}" target="_blank" rel="noopener">${esc(s.place)} ↗</a>`,safeUrl(s.link)&&`<a href="${esc(s.link)}" target="_blank" rel="noopener">Open link ↗</a>`,esc(s.notes),s.time&&calLink(s.title,s.day+'T'+s.time,60,s.notes||'',s.place||'')]))];
  rows.sort((x,y)=>x[0].localeCompare(y[0]));
  $('#stops').innerHTML=rows.length?rows.map(r=>r[1]).join(''):`<div class="empty-note">Nothing planned for this day yet.</div>`;
 }
@@ -257,11 +267,30 @@ function renderMoney(){
 function renderTrip(){
  const f=$('#tripForm');if(f.contains(document.activeElement))return;
  f.elements.destination.value=S.meta.destination||'';f.elements.start.value=S.meta.start||'';f.elements.end.value=S.meta.end||'';f.elements.currency.value=S.meta.currency||'₹';
- $('#people').innerHTML=people().map(p=>`<div class="person"><input data-pn="${esc(p.id)}" value="${esc(p.name)}" aria-label="Traveller name"><label><input type="checkbox" data-ps="${esc(p.id)}"${p.shares!==false?' checked':''}> joining</label></div>`).join('');
+ $('#people').innerHTML=people().map(p=>`<div class="person"><input data-pn="${esc(p.id)}" value="${esc(p.name)}" aria-label="Traveller name"><label><input type="checkbox" data-ps="${esc(p.id)}"${p.shares!==false?' checked':''}> joining</label><input data-pe="${esc(p.id)}" type="email" value="${esc(p.email||'')}" placeholder="Email for reminders" aria-label="Email for reminders" style="grid-column:1/-1;margin-top:-2px"></div>`).join('');
 }
-function render(){renderHead();renderPlan();renderBookings();renderLists();renderMoney();renderTrip()}
+const paxOf=b=>(b&&b.pax&&typeof b.pax==='object')?b.pax:{};
+const flights=()=>S.bookings.filter(b=>b.kind==='Flight').sort((x,y)=>((x.date||'9')+(x.time||'')).localeCompare((y.date||'9')+(y.time||'')));
+function paxSummary(b){const jn=people().filter(p=>p.shares!==false),px=paxOf(b);const done=jn.filter(p=>px[p.id]&&px[p.id].pnr).length;return jn.length?`PNRs ${done}/${jn.length} added`:''}
+function renderTickets(){const fl=flights(),jn=people().filter(p=>p.shares!==false);
+ $('#tickets').innerHTML=fl.length?fl.map(b=>{const px=paxOf(b);return `<div class="dayhd" style="margin-top:20px"><b>${esc(b.title)}</b><span>${esc(b.date?fmt(parse(b.date)):'')}${b.time?' · '+esc(b.time):''}</span></div><div class="list">`+jn.map(p=>{const x=px[p.id]||{};const hasFile=x.file&&/^[A-Za-z0-9_-]{10,100}$/.test(x.file.id||'');
+  return `<div class="row notime"><div><div class="ttl">${esc(p.name)}</div><div class="meta">${x.pnr?`PNR <b style="color:var(--ink);font-size:16px;letter-spacing:.04em">${esc(x.pnr)}</b> <button class="ib" type="button" data-copy="${esc(x.pnr)}">Copy</button>`:'No PNR yet'}${x.seat?' · Seat '+esc(x.seat):''}${hasFile?` · <button class="ib" type="button" data-ticket="${esc(x.file.id)}" style="color:var(--sky);min-height:32px;padding:0">Open ticket</button>`:''}</div></div><div class="acts">${S.canWrite?`<button class="ib" type="button" data-pax="${esc(b.id)}|${esc(p.id)}">${x.pnr||hasFile?'Edit':'Add'}</button>`:''}</div></div>`}).join('')+'</div>'}).join(''):`<div class="empty-note">No flights yet. Add them in Bookings with type Flight, then each person adds their PNR here.</div>`;}
+function openPax(bid,pid){const b=S.bookings.find(x=>x.id===bid);if(!b)return;const x=paxOf(b)[pid]||{};editing={col:'pax',bid,pid,dropFile:false};
+ $('#sfT').textContent=pname(pid)+' · '+(b.title||'Flight');
+ const cur=x.file&&x.file.id?`<div class="note">Attached: ${esc(x.file.name||'ticket')} <button class="ib" type="button" id="dropFile">Remove</button></div>`:'';
+ $('#sfB').innerHTML=`<label class="f"><span>PNR / booking reference</span><input name="pnr" value="${esc(x.pnr||'')}" autocapitalize="characters" autocomplete="off"></label><label class="f"><span>Seat (optional)</span><input name="seat" value="${esc(x.seat||'')}" autocomplete="off"></label><label class="f"><span>E-ticket / boarding pass (PDF or photo, up to 15 MB)</span><input type="file" name="ticket" accept="application/pdf,image/*">${cur}</label>`;
+ $('#sheet').classList.add('on');setTimeout(()=>$('#sfB input').focus(),50)}
+function calUrl(title,startLocal,mins,details,loc){const s=startLocal.replace(/[-:]/g,'').slice(0,13)+'00';const d=new Date(startLocal+':00');const e=new Date(d.getTime()+(mins||30)*60000);const p2=n=>String(n).padStart(2,'0');const es=`${e.getFullYear()}${p2(e.getMonth()+1)}${p2(e.getDate())}T${p2(e.getHours())}${p2(e.getMinutes())}00`;
+ return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(title)+'&dates='+s+'/'+es+'&ctz=Asia%2FKolkata'+(details?'&details='+encodeURIComponent(details):'')+(loc?'&location='+encodeURIComponent(loc):'')}
+const calLink=(title,at,mins,details,loc)=>/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(at||'')?`<a href="${calUrl(title,at,mins,details,loc)}" target="_blank" rel="noopener">Add to my calendar ↗</a>`:'';
+function renderReminders(){const now=new Date(),p2=n=>String(n).padStart(2,'0');const nowS=`${now.getFullYear()}-${p2(now.getMonth()+1)}-${p2(now.getDate())}T${p2(now.getHours())}:${p2(now.getMinutes())}`;
+ const rs=[...S.reminders].sort((a,b)=>(a.done-b.done)||String(a.at||'').localeCompare(b.at||''));
+ $('#reminders').innerHTML=rs.length?rs.map(r=>{const past=(r.at||'')<nowS;const forTxt=!r.who||r.who==='all'?'Everyone':pname(r.who);const when=r.at?fmt(parse(r.at.slice(0,10)))+' · '+r.at.slice(11,16):'';
+  const emailTxt=r.email===false?'No email':r.emailed?'Emailed':'Email at this time';
+  return `<div class="chk${r.done?' done':''}" style="align-items:flex-start;padding:10px 8px 10px 14px"><input type="checkbox" aria-label="Done" data-rdone="${esc(r.id)}"${r.done?' checked':''}${S.canWrite?'':' disabled'} style="margin-top:4px"><div class="tx"><div class="ttl" style="font-size:16px">${esc(r.text)}</div><div class="meta">${esc(when)}${past&&!r.done?' · <b style="color:var(--coral)">due</b>':''} · For ${esc(forTxt)} · ${esc(emailTxt)}${r.notes?'<br>'+esc(r.notes):''}</div><div class="meta" style="margin-top:4px">${calLink(r.text,r.at,15,r.notes||'')}</div></div>${S.canWrite?`<button class="ib" type="button" data-edit="reminders" data-id="${esc(r.id)}">Edit</button><button class="ib" type="button" data-del="reminders" data-id="${esc(r.id)}">✕</button>`:''}</div>`}).join(''):`<div class="empty-note">No reminders yet. Ideas: web check-in, book the 4 am cab, Marble Palace permit.</div>`}
+function render(){renderHead();renderPlan();renderBookings();renderTickets();renderReminders();renderLists();renderMoney();renderTrip()}
 
-function route(){const v=(location.hash||'#plan').slice(1),ok=['plan','bookings','lists','money','trip','print'].includes(v)?v:'plan';
+function route(){const v=(location.hash||'#plan').slice(1),ok=['plan','bookings','tickets','reminders','lists','money','trip','print'].includes(v)?v:'plan';
  document.querySelectorAll('main section').forEach(s=>s.hidden=s.id!=='v-'+ok);
  document.querySelectorAll('#tabs a').forEach(a=>a.toggleAttribute('aria-current',a.getAttribute('href')==='#'+ok))}
 addEventListener('hashchange',route);route();
@@ -276,12 +305,16 @@ let editing=null;
 function openSheet(col,item,kind){
  editing={col,id:item?item.id:null,dropFile:false};const spec=FORMS[col],v=item?{...item}:{};
  if(!item&&kind)v.kind=kind;
+ if(item&&col==='reminders'&&item.at){v.rdate=item.at.slice(0,10);v.rtime=item.at.slice(11,16)}
+ if(!item&&col==='reminders'){v.rdate=S.day||S.meta.start;v.who='all'}
  if(!item){if(col==='stops')v.day=S.day;if(col==='expenses'){const td=new Date(),ts=`${td.getFullYear()}-${String(td.getMonth()+1).padStart(2,'0')}-${String(td.getDate()).padStart(2,'0')}`,ds=days();v.date=ds.includes(ts)?ts:(ts<(ds[0]||'')?'pre':ds[0]);v.paidBy=people()[0].id}}
  $('#sfT').textContent=(item?'Edit ':'Add ')+spec.title.toLowerCase();
  $('#sfB').innerHTML=spec.f.map(([k,l,t,req,opt])=>{const val=esc(v[k]??'');const r=req?' required':'';let inp;
   if(t==='area')inp=`<textarea name="${k}" rows="3">${val}</textarea>`;
   else if(t==='sel')inp=`<select name="${k}">${opt.map(o=>`<option${o===v[k]?' selected':''}>${esc(o)}</option>`).join('')}</select>`;
   else if(t==='person')inp=`<select name="${k}">${people().filter(p=>p.shares!==false||p.id===v[k]).map(p=>`<option value="${esc(p.id)}"${p.id===v[k]?' selected':''}>${esc(p.name)}</option>`).join('')}</select>`;
+  else if(t==='whosel')inp=`<select name="${k}"><option value="all">Everyone joining</option>${people().filter(p=>p.shares!==false).map(p=>`<option value="${esc(p.id)}"${p.id===v[k]?' selected':''}>${esc(p.name)}</option>`).join('')}</select>`;
+  else if(t==='yn')inp=`<select name="${k}"><option value="yes"${v[k]!==false?' selected':''}>Yes, email at that time</option><option value="no"${v[k]===false?' selected':''}>No email</option></select>`;
   else if(t==='tday')inp=`<select name="${k}"><option value="pre"${v[k]==='pre'?' selected':''}>Before the trip (flights, hotel, advance bookings)</option>${days().map(d=>`<option value="${d}"${d===v[k]?' selected':''}>${esc(fmt(parse(d)))}</option>`).join('')}</select>`;
   else if(t==='day')inp=`<select name="${k}">${days().map(d=>`<option value="${d}"${d===v[k]?' selected':''}>${esc(fmt(parse(d)))}</option>`).join('')}</select>`;
   else inp=`<input name="${k}" type="${t==='num'?'number':t==='url'?'url':t}"${t==='num'?' step="0.01" min="0" inputmode="decimal"':''} value="${val}"${r}>`;
@@ -296,10 +329,19 @@ const closeSheet=()=>{$('#sheet').classList.remove('on');editing=null};
 $('#sfX').addEventListener('click',closeSheet);
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
 addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
-$('#sf').addEventListener('submit',async e=>{e.preventDefault();if(!editing)return;const {col,id}=editing,body={};
+$('#sf').addEventListener('submit',async e=>{e.preventDefault();if(!editing)return;
+ if(editing.col==='pax'){const {bid,pid,dropFile}=editing,f=$('#sf').elements,body={pnr:f.pnr.value.trim().toUpperCase().slice(0,20),seat:f.seat.value.trim().slice(0,10)};
+  if(dropFile)body.file=null;const file=f.ticket.files&&f.ticket.files[0];
+  if(file){const btn=$('#sf button.btn');btn.disabled=true;btn.textContent='Uploading…';try{const r=await assetsNS.upload(file);body.file={id:r.id,name:(r.name||file.name).slice(0,120),type:r.contentType}}catch(err){btn.disabled=false;btn.textContent='Save';status(err&&err.code==='too_large'?'That file is over 15 MB.':err&&err.code==='unsupported_type'?'Use a PDF or an image file.':'Could not upload the ticket - try again.');return}btn.disabled=false;btn.textContent='Save'}
+  closeSheet();await write(()=>db.collection('bookings').doc(bid).update({pax:{[pid]:body}}));return}
+ const {col,id}=editing,body={};
  for(const [k,,t] of FORMS[col].f){const el=$('#sf').elements[k];body[k]=t==='num'?Number(el.value)||0:el.value.trim()}
  const old=id&&S[col].find(x=>x.id===id);body.ts=old&&old.ts||Date.now();
+ if(col==='reminders'){if(!/^\d{4}-\d{2}-\d{2}$/.test(body.rdate)||!/^\d{2}:\d{2}$/.test(body.rtime)){status('Pick a date and time for the reminder.');return}
+  const at=body.rdate+'T'+body.rtime;body.at=at;body.email=body.email!=='no';delete body.rdate;delete body.rtime;body.done=!!(old&&old.done);
+  body.emailed=!!(old&&old.emailed&&old.at===at)}
  if(col==='expenses'){body.split=(old&&Array.isArray(old.split)&&old.split.length)?old.split:people().filter(p=>p.shares!==false).map(p=>p.id)}
+ if(col==='bookings'&&old&&old.pax)body.pax=old.pax;
  if(col==='bookings'){body.file=(!editing.dropFile&&old&&old.file)||null;const fi=$('#sf').elements.ticket,f=fi&&fi.files&&fi.files[0];
   if(f){if(f.size>15*1024*1024){status('That file is over 15 MB.');return}
    const btn=$('#sf button.btn');btn.disabled=true;btn.textContent='Uploading…';
@@ -316,6 +358,7 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button');i
   await write(()=>db.collection('expenses').doc(uid()).set({kind:'settle',from:f,to,amount:Number(a)||0,ts:Date.now()}));return}
  if(t.dataset.pack){const x=S.lists.find(i=>i.id===t.dataset.pack),cur=!!(x&&x.by&&x.by[t.dataset.pid]);await write(()=>db.collection('lists').doc(t.dataset.pack).update({by:{[t.dataset.pid]:!cur}}));return}
  if(t.id==='dropFile'){editing&&(editing.dropFile=true);t.parentElement.textContent='Attachment will be removed when you save.';return}
+ if(t.dataset.pax){const [bid,pid]=t.dataset.pax.split('|');openPax(bid,pid);return}
  if(t.dataset.new){openSheet(t.dataset.new,null,t.dataset.kind);return}
  if(t.dataset.edit){openSheet(t.dataset.edit,S[t.dataset.edit].find(x=>x.id===t.dataset.id));return}
  if(t.dataset.del){if(!t.classList.contains('warn')){t.classList.add('warn');t.textContent='Sure?';setTimeout(()=>{t.classList.remove('warn');t.textContent=t.dataset.del==='lists'?'✕':'Delete'},3000);return}
@@ -324,6 +367,7 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button');i
  if(t.id==='dest'){location.hash='#trip';setTimeout(()=>$('#tripForm').elements.destination.focus(),50)}
 });
 document.addEventListener('change',async e=>{const t=e.target;
+ if(t.dataset.rdone)await write(()=>db.collection('reminders').doc(t.dataset.rdone).update({done:t.checked}));
  if(t.dataset.tick)await write(()=>db.collection('lists').doc(t.dataset.tick).update({done:t.checked}));
  if(t.dataset.who!==undefined&&t.matches('select[data-who]'))await write(()=>db.collection('lists').doc(t.dataset.who).update({who:t.value}));
 });
@@ -331,7 +375,7 @@ document.querySelectorAll('form.add').forEach(f=>f.addEventListener('submit',asy
  await write(()=>db.collection('lists').doc(uid()).set({text:v,list:f.dataset.list,done:false,who:'',ts:Date.now()}))}));
 $('#tripForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.target;
  if(f.elements.start.value&&f.elements.end.value&&f.elements.end.value<f.elements.start.value){$('#tripSaved').textContent='Return date is before departure.';return}
- const ppl=people().map(p=>({id:p.id,name:(f.querySelector(`[data-pn="${p.id}"]`).value.trim()||p.name),shares:f.querySelector(`[data-ps="${p.id}"]`).checked}));
+ const ppl=people().map(p=>({id:p.id,name:(f.querySelector(`[data-pn="${p.id}"]`).value.trim()||p.name),shares:f.querySelector(`[data-ps="${p.id}"]`).checked,email:(f.querySelector(`[data-pe="${p.id}"]`).value.trim()).slice(0,120)}));
  const body={destination:f.elements.destination.value.trim(),start:f.elements.start.value,end:f.elements.end.value,currency:f.elements.currency.value.trim()||'₹',people:ppl};
  document.activeElement.blur();
  if(await write(()=>db.doc('trip/meta').set(body)))$('#tripSaved').textContent='Saved for everyone.'});
@@ -360,7 +404,7 @@ function pdfInfo(){const P=mkDoc();P.title(tripName()+' - travel info',range());
  const join=people().filter(p=>p.shares!==false).map(p=>p.name),out=people().filter(p=>p.shares===false).map(p=>p.name);
  P.h('Trip');P.p('Destination: '+(S.meta.destination||'-'));P.p('Dates: '+range());P.p('Joining: '+(join.join(', ')||'-'));if(out.length)P.p('Not joining: '+out.join(', '),{mute:1});P.p('Expenses are split equally by the number joining ('+(join.length||1)+').',{mute:1});
  const bk=sortB(S.bookings),groups=[['Flights',b=>b.kind==='Flight'],['Stay',b=>b.kind==='Hotel'],['Other bookings',b=>b.kind!=='Flight'&&b.kind!=='Hotel']];
- for(const [g,f] of groups){const it=bk.filter(f);if(!it.length)continue;P.h(g);for(const b of it){P.p(b.title,{bold:1,size:11});P.p([b.date&&fmt(parse(b.date),{weekday:'short',day:'numeric',month:'short',year:'numeric'})+(b.time?' at '+b.time:''),'Ref / PNR: '+(b.ref||'not yet added')].filter(Boolean).join('   |   '));if(b.file&&b.file.id)P.p('Ticket file attached in the planner: '+(b.file.name||'ticket'),{mute:1});P.p(b.details,{mute:1});if(safeUrl(b.link))P.p(b.link,{mute:1,size:8});P.gap(2)}}
+ for(const [g,f] of groups){const it=bk.filter(f);if(!it.length)continue;P.h(g);for(const b of it){P.p(b.title,{bold:1,size:11});if(b.kind==='Flight'){const px=paxOf(b);people().filter(p=>p.shares!==false).forEach(p=>{const x=px[p.id]||{};P.p(p.name+': PNR '+(x.pnr||'not yet added')+(x.seat?'  |  Seat '+x.seat:'')+(x.file&&x.file.id?'  |  ticket attached':''),{indent:4})})}P.p([b.date&&fmt(parse(b.date),{weekday:'short',day:'numeric',month:'short',year:'numeric'})+(b.time?' at '+b.time:''),'Ref / PNR: '+(b.ref||'not yet added')].filter(Boolean).join('   |   '));if(b.file&&b.file.id)P.p('Ticket file attached in the planner: '+(b.file.name||'ticket'),{mute:1});P.p(b.details,{mute:1});if(safeUrl(b.link))P.p(b.link,{mute:1,size:8});P.gap(2)}}
  if(!bk.length){P.h('Bookings');P.p('No bookings added yet.',{mute:1})}
  P.foot();return P.d}
 function pdfPlan(){const P=mkDoc();P.title(tripName()+' - itinerary',range());const ds=days();
@@ -401,7 +445,7 @@ function showSetup(msg){$('#setup').hidden=false;$('#setupMsg').textContent=msg|
 const CACHE_KEY='tripData.v1';
 function cacheSave(d){try{localStorage.setItem(CACHE_KEY,JSON.stringify(d))}catch(e){}}
 function cacheLoad(){try{return JSON.parse(localStorage.getItem(CACHE_KEY)||'null')}catch(e){return null}}
-function applyData(d){S.meta={...DEF,...((d.trip||{}).meta||{})};for(const c of ['stops','bookings','lists','expenses'])S[c]=toArr(d[c]);render()}
+function applyData(d){S.meta={...DEF,...((d.trip||{}).meta||{})};for(const c of ['stops','bookings','lists','expenses','reminders'])S[c]=toArr(d[c]);render()}
 const toArr=o=>Object.keys(o||{}).map(id=>({...o[id],id}));
 const merge=(a,b)=>{const o={...(a||{})};for(const k in b){const v=b[k];o[k]=(v&&typeof v==='object'&&!Array.isArray(v)&&o[k]&&typeof o[k]==='object'&&!Array.isArray(o[k]))?merge(o[k],v):v}return o};
 function local(c,id,fn){if(c==='trip'){S.meta=fn(S.meta);return}const a=S[c],k=a.findIndex(x=>x.id===id);const nx=fn(k>=0?a[k]:null);if(nx===null){if(k>=0)a.splice(k,1)}else if(k>=0)a[k]={...nx,id};else a.push({...nx,id})}
