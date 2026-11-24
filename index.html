@@ -139,10 +139,11 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   </section>
   <section id="v-money" hidden>
     <h2>Expenses</h2><p class="sub" id="splitNote">Each expense is split equally.</p>
-    <div class="kpis"><div class="kpi"><span class="lbl">Total spent</span><b id="kTot">—</b></div><div class="kpi"><span class="lbl">Per share</span><b id="kPer">—</b></div><div class="kpi"><span class="lbl">Entries</span><b id="kN">—</b></div></div>
-    <h3>Balances</h3>
-    <div class="bal" id="bal"></div>
+    <div class="kpis"><div class="kpi"><span class="lbl">Total spent</span><b id="kTot">—</b></div><div class="kpi"><span class="lbl">Each person's share</span><b id="kPer">—</b></div><div class="kpi"><span class="lbl">Expenses logged</span><b id="kN">—</b></div></div>
+    <h3>Settle up</h3>
     <div class="settle" id="settle"></div>
+    <h3>Each person's balance</h3><p class="note" id="balNote" style="margin-top:-6px">Share = total spent ÷ number joining. Balance = what you paid minus your share.</p>
+    <div class="bal" id="bal"></div>
     <div class="bar"><button class="btn" data-new="expenses" type="button">Add expense</button><button class="btn ghost" type="button" data-pdf="money">Expense report PDF</button></div>
     <h3>All expenses, day by day</h3>
     <div class="list" id="expenses"></div>
@@ -258,7 +259,7 @@ function renderMoney(){
  const ex0=S.expenses.filter(e=>e.kind!=='settle'),st=S.expenses.filter(e=>e.kind==='settle');
  $('#kTot').textContent=cur(m.tot);$('#kPer').textContent=cur(m.tot/m.n);$('#kN').textContent=ex0.length;
  $('#bal').innerHTML=m.bal.filter(b=>b.p.shares!==false||b.paid>0).map(b=>`<div>${esc(b.p.name)}<div class="note">paid ${esc(cur(b.paid))} · share ${esc(cur(b.share))}${b.sent?' · paid back '+esc(cur(b.sent)):''}${b.got?' · received '+esc(cur(b.got)):''}</div></div><div class="n ${b.net>0.5?'pos':b.net<-0.5?'neg':''}">${b.net>0.5?'gets back ':b.net<-0.5?'owes ':''}${esc(cur(Math.abs(b.net)))}</div>`).join('');
- $('#settle').innerHTML=(m.tx.length?'<b>To settle up (fewest payments)</b>'+m.tx.map(t=>`<div class="sl"><span>${esc(t[0])} pays ${esc(t[1])} <b>${esc(cur(t[2]))}</b></span>${S.canWrite?`<button class="ib" type="button" data-settle="${esc(t[3])}|${esc(t[4])}|${Math.round(t[2])}">Mark paid</button>`:''}</div>`).join(''):(ex0.length?'<b>All square.</b>':'<b>Nothing to settle yet.</b>'))
+ $('#settle').innerHTML=(m.tx.length?'<div class="note" style="margin-bottom:6px">Make these payments and everyone is even.</div>'+m.tx.map(t=>`<div class="sl" style="padding:6px 0;font-size:17px"><span><b>${esc(t[0])}</b> pays <b>${esc(t[1])}</b></span><b style="color:var(--coral);font-size:20px">${esc(cur(t[2]))}</b>${S.canWrite?`<button class="ib" type="button" data-settle="${esc(t[3])}|${esc(t[4])}|${Math.round(t[2])}">Mark paid</button>`:''}</div>`).join(''):(ex0.length?'<b>All square.</b>':'<b>Nothing to settle yet.</b>'))
   +(st.length?'<div class="note" style="margin-top:10px">Payments already made:</div>'+st.map(s=>`<div class="sl note"><span>${esc(pname(s.from))} paid ${esc(pname(s.to))} ${esc(cur(Number(s.amount)||0))}</span>${S.canWrite?`<button class="ib" type="button" data-del="expenses" data-id="${esc(s.id)}">Undo</button>`:''}</div>`).join(''):'');
  const dkey=e=>e.date==='pre'||!e.date?'0':e.date,dlab=k=>k==='0'?'Before the trip':fmt(parse(k),{weekday:'long',day:'numeric',month:'short'});
  const ex=[...ex0].sort((a,b)=>dkey(a).localeCompare(dkey(b))||(a.ts||0)-(b.ts||0));const keys=[...new Set(ex.map(dkey))];
@@ -419,16 +420,43 @@ function pdfCheck(){const P=mkDoc();P.title(tripName()+' - travel checklist',ran
  const jn=people().filter(p=>p.shares!==false);P.h('Packing - each person ticks their own');S.lists.filter(x=>x.list==='pack').sort((a,b)=>(a.ts||0)-(b.ts||0)).forEach(x=>P.multi(x.text,jn.map(p=>[p.name,!!(x.by&&x.by[p.id])])));
  for(const [k,lab] of [['todo','To-do']]){P.h(lab);const it=S.lists.filter(x=>x.list===k).sort((a,b)=>(a.ts||0)-(b.ts||0));if(!it.length)P.p('Empty.',{mute:1});it.forEach(x=>P.box(x.done,x.text,x.who?pname(x.who):''))}
  P.foot();return P.d}
-function pdfMoney(){const P=mkDoc(),m=money();P.title(tripName()+' - expense report',range());
- P.h('Summary');P.p('Total spent: '+cur(m.tot));P.p('Split equally by '+m.n+': '+m.sh.map(p=>p.name).join(', '));
- P.h('Who owes whom');if(m.tx.length)m.tx.forEach(t=>P.p(t[0]+' pays '+t[1]+': '+cur(t[2]),{bold:1,size:11}));else P.p('All square.',{bold:1});
- P.h('Per person');m.bal.filter(b=>b.p.shares!==false||b.paid>0).forEach(b=>P.p(b.p.name+':  paid '+cur(b.paid)+'  |  share '+cur(b.share)+(b.sent?'  |  paid back '+cur(b.sent):'')+(b.got?'  |  received '+cur(b.got):'')+'  |  '+(b.net>0.5?'gets back '+cur(b.net):b.net<-0.5?'owes '+cur(-b.net):'square')));
- const st=S.expenses.filter(e=>e.kind==='settle');if(st.length){P.h('Payments already made');st.forEach(s=>P.p(pname(s.from)+' paid '+pname(s.to)+' '+cur(Number(s.amount)||0)))}
- const dkey=e=>e.date==='pre'||!e.date?'0':e.date,ex=S.expenses.filter(e=>e.kind!=='settle').sort((a,b)=>dkey(a).localeCompare(dkey(b))||(a.ts||0)-(b.ts||0));
- [...new Set(ex.map(dkey))].forEach(k=>{const it=ex.filter(e=>dkey(e)===k);P.h((k==='0'?'Before the trip':fmt(parse(k),{weekday:'long',day:'numeric',month:'long'}))+'  -  '+cur(it.reduce((s,e)=>s+(Number(e.amount)||0),0)));
-  it.forEach(e=>P.row(cur(Number(e.amount)||0),e.desc,pname(e.paidBy)+' paid  |  '+(e.cat||'Other')))});
- if(!ex.length){P.h('Expenses');P.p('No expenses yet.',{mute:1})}
- P.foot();return P.d}
+function pdfMoney(){const J=window.jspdf&&window.jspdf.jsPDF;if(!J)throw new Error('lib');
+ const d=new J({unit:'mm',format:'a4'}),W=210,M=16,CW=W-2*M,B=280,m=money();let y=0;
+ const INK=[20,32,46],MUTE=[93,104,118],SKY=[29,111,216],CORAL=[214,76,44],OK=[18,122,74],LINE=[226,220,207],TINT=[236,243,252];
+ const col=c=>d.setTextColor(...c),fill=c=>d.setFillColor(...c),font=(s,b)=>{d.setFont('helvetica',b?'bold':'normal');d.setFontSize(s)};
+ const need=hh=>{if(y+hh>B){d.addPage();y=M}};
+ const R=n=>A(cur(n));
+ const txt=(t,x,yy,o)=>d.text(A(t),x,yy,o||{});
+ const heading=(t,sub)=>{need(18);y+=4;font(14,1);col(INK);txt(t,M,y);y+=2;d.setDrawColor(...LINE);d.setLineWidth(.4);d.line(M,y,W-M,y);y+=5;if(sub){font(9.5);col(MUTE);d.splitTextToSize(A(sub),CW).forEach(l=>{txt(l,M,y);y+=4.4});y+=1.5}};
+ // header band
+ fill(SKY);d.rect(0,0,W,36,'F');col([255,255,255]);font(20,1);txt(d.splitTextToSize(A((S.meta.destination||'Our')+' trip: expenses'),CW)[0],M,15);
+ font(10);txt(range(),M,23);txt('Split equally between '+m.n+': '+m.sh.map(p=>p.name).join(', '),M,29);y=46;
+ // KPI cards
+ const ex=S.expenses.filter(e=>e.kind!=='settle'),kw=(CW-8)/3;
+ [['Total spent',R(m.tot),''],["Each person's share",R(m.tot/m.n),'Total / '+m.n],['Expenses logged',String(ex.length),'']].forEach((k,i)=>{const x=M+i*(kw+4);fill([250,248,243]);d.setDrawColor(...LINE);d.roundedRect(x,y,kw,24,2.5,2.5,'FD');font(8.5,1);col(MUTE);txt(k[0],x+4,y+7);font(17,1);col(INK);txt(k[1],x+4,y+16);if(k[2]){font(8);col(MUTE);txt(k[2],x+4,y+21)}});
+ y+=32;
+ // settle up
+ heading('Settle up',m.tx.length?'Make these payments and everyone is even.':'');
+ if(!m.tx.length){font(12,1);col(OK);txt(ex.length?'Everyone is even. Nothing to pay.':'No expenses yet.',M,y+2);y+=10}
+ m.tx.forEach(t=>{need(16);fill(TINT);d.roundedRect(M,y,CW,13,2.5,2.5,'F');font(12,1);col(INK);const a=A(t[0]);txt(a,M+5,y+8.5);let x=M+5+d.getTextWidth(a)+3;font(10.5);col(MUTE);txt('pays',x,y+8.5);x+=d.getTextWidth('pays')+3;font(12,1);col(INK);txt(A(t[1]),x,y+8.5);font(14,1);col(CORAL);txt(R(t[2]),W-M-5,y+9,{align:'right'});y+=16});
+ const st=S.expenses.filter(e=>e.kind==='settle');
+ if(st.length){font(9.5,1);col(MUTE);txt('Already paid back',M,y+2);y+=6;font(9.5);st.forEach(s=>{need(5);txt(pname(s.from)+' paid '+pname(s.to)+'  '+R(Number(s.amount)||0),M,y);y+=4.6});y+=2}
+ // balances table
+ y+=4;heading("Each person's balance","Share = total spent / "+m.n+". Balance = what you paid minus your share. A plus balance means you get money back; a minus balance means you owe.");
+ const cx=[M,M+52,M+92,W-M];need(10);fill([243,240,234]);d.rect(M,y-4.5,CW,7,'F');font(8.5,1);col(MUTE);txt('PERSON',cx[0]+2,y);txt('PAID',cx[1]+28,y,{align:'right'});txt('SHARE',cx[2]+28,y,{align:'right'});txt('BALANCE',cx[3]-2,y,{align:'right'});y+=8;
+ m.bal.filter(b=>b.p.shares!==false||b.paid>0).forEach(b=>{need(9);font(11,1);col(INK);txt(b.p.name,cx[0]+2,y);font(11);txt(R(b.paid),cx[1]+28,y,{align:'right'});txt(R(b.share),cx[2]+28,y,{align:'right'});
+  const g=b.net>0.5,o=b.net<-0.5;font(11,1);col(g?OK:o?CORAL:MUTE);txt(g?'gets back '+R(b.net):o?'owes '+R(-b.net):'even',cx[3]-2,y,{align:'right'});y+=3;d.setDrawColor(...LINE);d.setLineWidth(.2);d.line(M,y,W-M,y);y+=5.5});
+ y+=2;
+ // all expenses
+ heading('All expenses','Every expense, by day. Each one is split equally between the people joining.');
+ const dkey=e=>e.date==='pre'||!e.date?'0':e.date,exs=[...ex].sort((a,b)=>dkey(a).localeCompare(dkey(b))||(a.ts||0)-(b.ts||0));
+ if(!exs.length){font(10);col(MUTE);txt('No expenses yet.',M,y);y+=6}
+ [...new Set(exs.map(dkey))].forEach(k=>{const it=exs.filter(e=>dkey(e)===k),sum=it.reduce((s,e)=>s+(Number(e.amount)||0),0);need(16);
+  fill([243,240,234]);d.rect(M,y-4.5,CW,7.5,'F');font(10.5,1);col(INK);txt(k==='0'?'Before the trip':fmt(parse(k),{weekday:'long',day:'numeric',month:'long'}),M+2,y);txt(R(sum),W-M-2,y,{align:'right'});y+=8;
+  it.forEach(e=>{const lines=d.splitTextToSize(A(e.desc),CW-60);need(6+5*lines.length);font(10.5);col(INK);lines.forEach((l,i)=>txt(l,M+2,y+i*5));font(10.5,1);txt(R(Number(e.amount)||0),W-M-2,y,{align:'right'});
+   font(8.5);col(MUTE);txt(pname(e.paidBy)+' paid  |  '+(e.cat||'Other'),M+2,y+5*lines.length-0.5);y+=5*lines.length+4.5});y+=2});
+ const n=d.getNumberOfPages();for(let i=1;i<=n;i++){d.setPage(i);font(8);col(MUTE);txt('Printed '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+'  |  page '+i+' of '+n,M,290)}
+ return d}
 document.addEventListener('click',async e=>{const t=e.target.closest('[data-pdf]');if(!t)return;const msg=$('#pdfMsg'),k=t.dataset.pdf;
  let doc;try{doc=({info:pdfInfo,plan:pdfPlan,check:pdfCheck,money:pdfMoney})[k]()}catch(err){msg.textContent='PDF tools are still loading - try again in a moment.';return}
  const name=(S.meta.destination||'trip').replace(/[^\w-]+/g,'-')+'-'+({info:'travel-info',plan:'itinerary',check:'checklist',money:'expenses'})[k]+'.pdf';
