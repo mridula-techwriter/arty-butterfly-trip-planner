@@ -317,6 +317,8 @@ function openSheet(col,item,kind){
   else if(t==='yn')inp=`<select name="${k}"><option value="yes"${v[k]!==false?' selected':''}>Yes, email at that time</option><option value="no"${v[k]===false?' selected':''}>No email</option></select>`;
   else if(t==='tday')inp=`<select name="${k}"><option value="pre"${v[k]==='pre'?' selected':''}>Before the trip (flights, hotel, advance bookings)</option>${days().map(d=>`<option value="${d}"${d===v[k]?' selected':''}>${esc(fmt(parse(d)))}</option>`).join('')}</select>`;
   else if(t==='day')inp=`<select name="${k}">${days().map(d=>`<option value="${d}"${d===v[k]?' selected':''}>${esc(fmt(parse(d)))}</option>`).join('')}</select>`;
+  else if(t==='time'){const cv=/^\d{2}:\d{2}$/.test(v[k]||'')?v[k]:'',hh=cv.slice(0,2),mm=cv.slice(3,5);const mins=[...new Set([...Array(12)].map((_,i)=>String(i*5).padStart(2,'0')).concat(mm?[mm]:[]))].sort();
+   inp=`<div class="grid2"><select data-th="${k}" aria-label="Hour"><option value="">Hour</option>${[...Array(24)].map((_,i)=>{const x=String(i).padStart(2,'0');return `<option value="${x}"${x===hh?' selected':''}>${x}</option>`}).join('')}</select><select data-tm="${k}" aria-label="Minutes"><option value="">Min</option>${mins.map(x=>`<option value="${x}"${x===mm?' selected':''}>${x}</option>`).join('')}</select></div><input type="hidden" name="${k}" value="${esc(cv)}">`}
   else inp=`<input name="${k}" type="${t==='num'?'number':t==='url'?'url':t}"${t==='num'?' step="0.01" min="0" inputmode="decimal"':''} value="${val}"${r}>`;
   return `<label class="f"><span>${l}</span>${inp}</label>`}).join('')+(col==='bookings'?fileField(v):'');
  $('#sheet').classList.add('on');setTimeout(()=>$('#sfB [required],#sfB input')?.focus(),50);
@@ -367,6 +369,7 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button');i
  if(t.id==='dest'){location.hash='#trip';setTimeout(()=>$('#tripForm').elements.destination.focus(),50)}
 });
 document.addEventListener('change',async e=>{const t=e.target;
+ if(t.dataset.th||t.dataset.tm){const k=t.dataset.th||t.dataset.tm,f=$('#sf'),H=f.querySelector(`[data-th="${k}"]`).value,M=f.querySelector(`[data-tm="${k}"]`).value;f.elements[k].value=H&&M?H+':'+(M):(H?H+':00':'');if(H&&!M){f.querySelector(`[data-tm="${k}"]`).value='00'}return}
  if(t.dataset.rdone)await write(()=>db.collection('reminders').doc(t.dataset.rdone).update({done:t.checked}));
  if(t.dataset.tick)await write(()=>db.collection('lists').doc(t.dataset.tick).update({done:t.checked}));
  if(t.dataset.who!==undefined&&t.matches('select[data-who]'))await write(()=>db.collection('lists').doc(t.dataset.who).update({who:t.value}));
