@@ -131,6 +131,11 @@ body{padding-bottom:env(safe-area-inset-bottom)}
     <div class="homehd"><div class="brand">Art Butterfly</div><h2 style="margin:6px 0 4px">My travel plans</h2><p class="sub" style="margin:0">Tap a trip to open it.</p></div>
     <button class="newtrip" type="button" id="newTrip"><span class="plus">+</span><span><b>Create a travel plan</b><small>Group or solo, any dates</small></span></button>
     <div id="tripList"></div>
+    <div id="groupInvite" hidden style="margin-top:26px;padding:16px 18px;border:1.5px dashed var(--line);border-radius:18px">
+      <b style="font-size:17px">Invite your travel group</b>
+      <p class="note" style="margin:4px 0 10px">Gives each person this same home screen: all group trips, and they can create travel plans too. Send it only to your group.</p>
+      <button class="btn ghost" type="button" id="copyGroup">Copy group invite link</button><p class="note" id="groupMsg" role="status"></p>
+    </div>
   </section>
   <section id="v-plan" hidden>
     <h2>Day by day</h2><p class="sub">Tap a day, add stops. Everyone sees changes live.</p>
@@ -533,10 +538,10 @@ $('#setupForm').addEventListener('submit',async e=>{e.preventDefault();const f=e
  if(!URL_RE.test(u)){msg.textContent='That link should look like https://script.google.com/macros/s/…/exec';return}if(!k){msg.textContent='Enter the passcode.';return}
  msg.textContent='Checking…';try{await rawCall({u,k},'apiSync',[-1]);CFG={u,k};localStorage.setItem(CFG_KEY,JSON.stringify(CFG));$('#setup').hidden=true;rev=-1;live=false;sync()}catch(err){msg.textContent=/passcode/i.test(String(err.message))?'Wrong passcode.':'Could not reach that link. Check it and your connection.'}});
 document.addEventListener('click',async e=>{const t=e.target;
- if(t.id==='copyInvite'){const m=$('#inviteMsg');if(!CFG){m.textContent='Not connected.';return}let l;try{l=inviteLink(ROLE.owner?await call('apiTripKey',CUR):CFG.k)}catch(err){m.textContent='Could not create the invite link. Check your connection.';return}try{await navigator.clipboard.writeText(l);m.textContent='Invite link for '+(S.meta.destination||'this trip')+' copied. It opens only this trip. Paste it in that trip\'s group.'}catch(err){m.textContent=l}}
+ if(t.id==='copyInvite'){const m=$('#inviteMsg');if(!CFG){m.textContent='Not connected.';return}let l;try{l=inviteLink(ROLE.owner?await call('apiTripKey',CUR):CFG.k)}catch(err){m.textContent='Could not create the invite link. Check your connection.';return}try{await navigator.clipboard.writeText(l);m.textContent='Invite for '+(S.meta.destination||'this trip')+' only copied. To give someone all group trips, use Copy group invite link on the My trips screen.'}catch(err){m.textContent=l}}
  if(t.id==='forget'){if(t.dataset.sure!=='1'){t.dataset.sure='1';t.textContent='Tap again to disconnect';return}localStorage.removeItem(CFG_KEY);localStorage.removeItem(CACHE_KEY);CFG=null;location.reload()}});
 function renderTrips(){if(window.__defaultView==='trips_pending'&&ROLE&&(ROLE.owner||ROLE.trip)){window.__defaultView=ROLE.owner?'trips':'plan';if(ROLE.owner&&(!location.hash||location.hash==='#'||location.hash==='#plan')){location.hash='#trips'}}
- const owner=!!(ROLE&&ROLE.owner);$('#newTrip').hidden=!owner;$('#backTrips').hidden=!owner;const oz=$('#ownerZone');if(oz)oz.hidden=!owner;
+ const owner=!!(ROLE&&ROLE.owner);$('#newTrip').hidden=!owner;$('#groupInvite').hidden=!owner;$('#backTrips').hidden=!owner;const oz=$('#ownerZone');if(oz)oz.hidden=!owner;
  const p2=n=>String(n).padStart(2,'0'),td=new Date(),today=`${td.getFullYear()}-${p2(td.getMonth()+1)}-${p2(td.getDate())}`;
  const ids=Object.keys(ALL.trip||{}),T=id=>ALL.trip[id]||{};
  const st=id=>{const m=T(id);if(m.start&&m.end&&m.start<=today&&today<=m.end)return 'now';if((m.end||'')<today&&m.end)return 'past';return 'next'};
@@ -561,6 +566,7 @@ $('#ntf').addEventListener('submit',async e=>{e.preventDefault();const f=e.targe
 document.addEventListener('click',async e=>{const t=e.target.closest('button');if(!t)return;
  if(t.id==='newTrip'){openNewTrip();return}
  if(t.id==='backTrips'){location.hash='#trips';return}
+ if(t.id==='copyGroup'){const m=$('#groupMsg');if(!CFG||!ROLE.owner){m.textContent='Not available.';return}const l=inviteLink(CFG.k);try{await navigator.clipboard.writeText(l);m.textContent='Group invite copied. Paste it in your group chat with Linz, Rakhi and Niranjana.'}catch(err){m.textContent=l}return}
  if(t.dataset.opentrip){setTrip(t.dataset.opentrip);location.hash='#plan';return}
  if(t.id==='delTrip'){if(t.dataset.sure!=='1'){t.dataset.sure='1';t.textContent='Tap again to delete '+(S.meta.destination||'this trip');setTimeout(()=>{t.dataset.sure='';t.textContent='Delete trip'},4000);return}
   try{await call('apiDeleteTrip',CUR);delete ALL.trip[CUR];CUR=null;try{localStorage.removeItem('curTrip')}catch(err){}rev=-1;derive();sync();location.hash='#trips'}catch(err){status('Could not delete the trip.')}}});
