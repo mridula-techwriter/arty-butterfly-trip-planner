@@ -2,6 +2,8 @@
 
 A group trip planner for Mridula, Linz, Rakhi and Niranjana. Installable phone app (PWA) with a private Google backend. No accounts needed to use it.
 
+Product decisions, audience and backlog: see [PRODUCT_BRIEF.md](PRODUCT_BRIEF.md). Team meeting notes: [meetings/](meetings/).
+
 Live app: https://mridula-techwriter.github.io/arty-butterfly-trip-planner/
 
 ## What it does
