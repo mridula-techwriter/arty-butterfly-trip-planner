@@ -88,9 +88,26 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 @media(prefers-reduced-motion:no-preference){.sheet.on form{animation:up .22s ease-out}@keyframes up{from{transform:translateY(40px);opacity:.4}}}
 html.m .pass{grid-template-columns:1fr}html.m .pass .stub{border-left:0;border-top:2px dashed var(--line);flex-direction:row;align-items:baseline;gap:10px}html.m .two{grid-template-columns:1fr}html.m .row{grid-template-columns:62px minmax(0,1fr)}html.m .row .acts{grid-column:1/-1;justify-content:flex-end;margin-top:-6px}html.m .row.notime .acts{grid-column:auto}html.m .t{font-size:19px}html.m .kpis{grid-template-columns:1fr 1fr}html.m .kpis .kpi:first-child{grid-column:1/-1}
 [hidden]{display:none!important}
+body.home .top,body.home nav{display:none}
+body.home .wrap{padding-top:max(22px,env(safe-area-inset-top))}
+.homehd{padding:8px 0 16px}.brand{font:600 13px 'Archivo Narrow',sans-serif;color:var(--sky);letter-spacing:.02em}
+.backbtn{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:999px;padding:0 16px;min-height:40px;font-weight:600;font-size:15px}
+.newtrip{display:flex;gap:14px;align-items:center;width:100%;text-align:left;background:var(--coral);color:#fff;border:0;border-radius:18px;padding:18px 20px;margin-bottom:22px;box-shadow:0 10px 24px -14px #ff6b4a}
+.newtrip .plus{font-size:34px;line-height:1;font-weight:400;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.22);display:grid;place-items:center;flex:none}
+.newtrip b{display:block;font-size:19px}.newtrip small{display:block;font-size:14px;opacity:.9}
+.tgroup{font:600 13px 'Archivo Narrow',sans-serif;color:var(--mute);margin:18px 2px 8px;letter-spacing:.02em}
+.tripcard{display:block;width:100%;text-align:left;background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:18px;padding:16px 18px;margin-bottom:12px;font:inherit;cursor:pointer;position:relative}
+.tripcard.now{border-color:var(--sky);border-width:2.5px;background:var(--sky2)}
+.tripcard .dst{font-weight:800;font-size:24px;line-height:1.1;padding-right:90px}
+.tripcard .dates{font-weight:600;font-size:17px;margin-top:6px}
+.tripcard .who{color:var(--mute);font-size:14px;margin-top:2px}
+.tripcard .chip{position:absolute;top:14px;right:14px;font:600 12px 'Archivo Narrow',sans-serif;padding:4px 10px;border-radius:999px;background:var(--bg);color:var(--mute)}
+.tripcard.now .chip{background:var(--sky);color:#fff}.tripcard.soon .chip{background:var(--coral);color:#fff}
+.tripcard.past{opacity:.75}
 body{padding-bottom:env(safe-area-inset-bottom)}
 </style><script>window.onerror=function(m,s,l){var e=document.getElementById("status");if(e)e.textContent="Error: "+m+" (line "+l+"). Send this to Claude.";};</script></head><body>
 <header class="top">
+  <div style="max-width:860px;margin:0 auto 10px"><button type="button" id="backTrips" class="backbtn" hidden>‹ My trips</button></div>
   <div class="pass">
     <div class="main">
       <div class="lbl">Destination</div>
@@ -107,13 +124,13 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   <button class="btn" id="installBtn" type="button" hidden style="margin:10px 0 0">Install app</button>
 </header>
 <nav><div class="in" id="tabs">
-  <a href="#trips" id="tripsTab">My trips</a><a href="#plan">Itinerary</a><a href="#bookings">Bookings</a><a href="#tickets">Tickets</a><a href="#reminders">Reminders</a><a href="#lists">Packing &amp; to-dos</a><a href="#money">Expenses</a><a href="#trip">Trip &amp; people</a><a href="#print">Print</a>
+  <a href="#plan">Itinerary</a><a href="#bookings">Bookings</a><a href="#tickets">Tickets</a><a href="#reminders">Reminders</a><a href="#lists">Packing &amp; to-dos</a><a href="#money">Expenses</a><a href="#trip">Trip &amp; people</a><a href="#print">Print</a>
 </div></nav>
 <main class="wrap">
   <section id="v-trips" hidden>
-    <h2>My trips</h2><p class="sub">Each trip has its own itinerary, bookings, tickets, reminders, checklist and expenses.</p>
-    <div class="bar" id="newTripBar" style="margin:0 0 14px"><button class="btn" type="button" id="newTrip">Create a travel plan</button></div>
-    <div class="list" id="tripList"></div>
+    <div class="homehd"><div class="brand">Art Butterfly</div><h2 style="margin:6px 0 4px">My travel plans</h2><p class="sub" style="margin:0">Tap a trip to open it.</p></div>
+    <button class="newtrip" type="button" id="newTrip"><span class="plus">+</span><span><b>Create a travel plan</b><small>Group or solo, any dates</small></span></button>
+    <div id="tripList"></div>
   </section>
   <section id="v-plan" hidden>
     <h2>Day by day</h2><p class="sub">Tap a day, add stops. Everyone sees changes live.</p>
@@ -308,7 +325,7 @@ function render(){renderHead();renderPlan();renderBookings();renderTickets();ren
 
 function route(){const v=(location.hash||'#plan').slice(1),ok=['trips','plan','bookings','tickets','reminders','lists','money','trip','print'].includes(v)?v:(window.__defaultView==='trips'?'trips':'plan');
  document.querySelectorAll('main section').forEach(s=>s.hidden=s.id!=='v-'+ok);
- document.querySelectorAll('#tabs a').forEach(a=>a.toggleAttribute('aria-current',a.getAttribute('href')==='#'+ok))}
+ document.querySelectorAll('#tabs a').forEach(a=>a.toggleAttribute('aria-current',a.getAttribute('href')==='#'+ok));document.body.classList.toggle('home',ok==='trips');scrollTo(0,0)}
 addEventListener('hashchange',route);route();
 
 const status=t=>$('#status').textContent=t;
@@ -519,11 +536,18 @@ document.addEventListener('click',async e=>{const t=e.target;
  if(t.id==='copyInvite'){const m=$('#inviteMsg');if(!CFG){m.textContent='Not connected.';return}let l;try{l=inviteLink(ROLE.owner?await call('apiTripKey',CUR):CFG.k)}catch(err){m.textContent='Could not create the invite link. Check your connection.';return}try{await navigator.clipboard.writeText(l);m.textContent='Invite link for '+(S.meta.destination||'this trip')+' copied. It opens only this trip. Paste it in that trip\'s group.'}catch(err){m.textContent=l}}
  if(t.id==='forget'){if(t.dataset.sure!=='1'){t.dataset.sure='1';t.textContent='Tap again to disconnect';return}localStorage.removeItem(CFG_KEY);localStorage.removeItem(CACHE_KEY);CFG=null;location.reload()}});
 function renderTrips(){if(window.__defaultView==='trips_pending'&&ROLE&&(ROLE.owner||ROLE.trip)){window.__defaultView=ROLE.owner?'trips':'plan';if(ROLE.owner&&(!location.hash||location.hash==='#'||location.hash==='#plan')){location.hash='#trips'}}
- const tab=$('#tripsTab');const owner=!!(ROLE&&ROLE.owner);tab.hidden=!owner;$('#newTripBar').hidden=!owner;const oz=$('#ownerZone');if(oz)oz.hidden=!owner;
- const ids=Object.keys(ALL.trip||{}).sort((a,b)=>String((ALL.trip[b]||{}).start||'').localeCompare(String((ALL.trip[a]||{}).start||'')));
- const today=new Date().toISOString().slice(0,10);
- $('#tripList').innerHTML=ids.length?ids.map(id=>{const m=ALL.trip[id]||{},pp=(m.people||[]).filter(p=>p.shares!==false),past=(m.end||'')<today;
-  return `<div class="row notime" style="${id===CUR?'border-color:var(--sky);border-width:2px':''}"><div><div class="ttl" style="font-size:19px">${esc(m.destination||'Untitled trip')}</div><div class="meta">${esc(m.start?fmt(parse(m.start)):'')}${m.end?' – '+esc(fmt(parse(m.end))):''} · ${pp.length<=1?'Solo':esc(pp.length+' travellers')}${past?' · Past':''}${id===CUR?' · <b style="color:var(--sky)">Open now</b>':''}</div></div><div class="acts"><button class="btn${id===CUR?' ghost':''}" type="button" data-opentrip="${esc(id)}" style="min-height:40px">Open</button></div></div>`}).join(''):'<div class="empty-note">No trips yet. Create your first travel plan.</div>';}
+ const owner=!!(ROLE&&ROLE.owner);$('#newTrip').hidden=!owner;$('#backTrips').hidden=!owner;const oz=$('#ownerZone');if(oz)oz.hidden=!owner;
+ const p2=n=>String(n).padStart(2,'0'),td=new Date(),today=`${td.getFullYear()}-${p2(td.getMonth()+1)}-${p2(td.getDate())}`;
+ const ids=Object.keys(ALL.trip||{}),T=id=>ALL.trip[id]||{};
+ const st=id=>{const m=T(id);if(m.start&&m.end&&m.start<=today&&today<=m.end)return 'now';if((m.end||'')<today&&m.end)return 'past';return 'next'};
+ const days=a=>Math.round((parse(a)-parse(today))/864e5);
+ const card=id=>{const m=T(id),s=st(id),pp=(m.people||[]).filter(p=>p.shares!==false);const y=m.start?parse(m.start).getFullYear():'';
+  const dates=m.start?`${fmt(parse(m.start))} – ${fmt(parse(m.end||m.start))} ${y}`:'Dates not set';
+  let chip='',cls=s;if(s==='now'){chip='In progress · day '+(days(today)-days(m.start)+1)}else if(s==='past'){chip='Completed'}else if(m.start){const n=days(m.start);chip=n===0?'Today':n===1?'Tomorrow':'In '+n+' days';if(n<=14)cls+=' soon'}
+  return `<button type="button" class="tripcard ${cls}" data-opentrip="${esc(id)}"><span class="chip">${esc(chip)}</span><div class="dst">${esc(m.destination||'Untitled trip')}</div><div class="dates">${esc(dates)}</div><div class="who">${pp.length<=1?'Solo trip':esc(pp.length+' travellers: '+pp.map(p=>p.name).join(', '))}</div></button>`};
+ const now=ids.filter(id=>st(id)==='now'),next=ids.filter(id=>st(id)==='next').sort((a,b)=>String(T(a).start||'9').localeCompare(String(T(b).start||'9'))),past=ids.filter(id=>st(id)==='past').sort((a,b)=>String(T(b).start).localeCompare(String(T(a).start)));
+ $('#tripList').innerHTML=!ids.length?'<div class="empty-note">No trips yet. Tap Create a travel plan to start.</div>':
+  (now.length?'<div class="tgroup">IN PROGRESS</div>'+now.map(card).join(''):'')+(next.length?'<div class="tgroup">UPCOMING</div>'+next.map(card).join(''):'')+(past.length?'<div class="tgroup">PAST</div>'+past.map(card).join(''):'');}
 function openNewTrip(){const f=$('#ntf');f.reset();f.elements.currency.value='₹';$('#ntMsg').textContent='';$('#ntPeople').hidden=false;$('#ntMe').hidden=true;$('#tripSheet').classList.add('on');setTimeout(()=>f.elements.destination.focus(),50)}
 $('#ntf').elements.kind.addEventListener('change',e=>{const solo=e.target.value==='solo';$('#ntPeople').hidden=solo;$('#ntMe').hidden=!solo});
 $('#ntCancel').addEventListener('click',()=>$('#tripSheet').classList.remove('on'));
@@ -536,6 +560,7 @@ $('#ntf').addEventListener('submit',async e=>{e.preventDefault();const f=e.targe
  btn.disabled=false});
 document.addEventListener('click',async e=>{const t=e.target.closest('button');if(!t)return;
  if(t.id==='newTrip'){openNewTrip();return}
+ if(t.id==='backTrips'){location.hash='#trips';return}
  if(t.dataset.opentrip){setTrip(t.dataset.opentrip);location.hash='#plan';return}
  if(t.id==='delTrip'){if(t.dataset.sure!=='1'){t.dataset.sure='1';t.textContent='Tap again to delete '+(S.meta.destination||'this trip');setTimeout(()=>{t.dataset.sure='';t.textContent='Delete trip'},4000);return}
   try{await call('apiDeleteTrip',CUR);delete ALL.trip[CUR];CUR=null;try{localStorage.removeItem('curTrip')}catch(err){}rev=-1;derive();sync();location.hash='#trips'}catch(err){status('Could not delete the trip.')}}});
