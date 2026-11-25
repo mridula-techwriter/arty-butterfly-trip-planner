@@ -103,7 +103,14 @@ body.home .wrap{padding-top:max(22px,env(safe-area-inset-top))}
 .tripcard .who{color:var(--mute);font-size:14px;margin-top:2px}
 .tripcard .chip{position:absolute;top:14px;right:14px;font:600 12px 'Archivo Narrow',sans-serif;padding:4px 10px;border-radius:999px;background:var(--bg);color:var(--mute)}
 .tripcard.now .chip{background:var(--sky);color:#fff}.tripcard.soon .chip{background:var(--coral);color:#fff}
-.tripcard.past{opacity:.75}
+.tripwrap{position:relative;margin-bottom:12px}.tripwrap .tripcard{margin-bottom:0}
+.tacts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
+.tact{background:var(--card);border:1.5px solid var(--line);color:var(--ink);border-radius:999px;padding:0 16px;min-height:40px;font-weight:600;font-size:14px}
+.tact.strong{background:var(--ink);color:var(--bg);border-color:var(--ink)}.tact.warn{color:var(--coral);border-color:var(--coral)}.tact.confirm{background:var(--coral);color:#fff;border-color:var(--coral)}
+.tripcard.done{filter:grayscale(1);opacity:.55}
+.ttrash{width:44px;height:40px;border-radius:12px;border:1.5px solid var(--coral);background:var(--card);color:var(--coral);display:grid;place-items:center}
+.ttrash.confirm{background:var(--coral);color:#fff;width:auto;padding:0 12px;font-weight:600;font-size:13px}
+.tripcard.past{border-style:dashed}
 body{padding-bottom:env(safe-area-inset-bottom)}
 </style><script>window.onerror=function(m,s,l){var e=document.getElementById("status");if(e)e.textContent="Error: "+m+" (line "+l+"). Send this to Claude.";};</script></head><body>
 <header class="top">
@@ -544,15 +551,22 @@ function renderTrips(){if(window.__defaultView==='trips_pending'&&ROLE&&(ROLE.ow
  const owner=!!(ROLE&&ROLE.owner);$('#newTrip').hidden=!owner;$('#groupInvite').hidden=!owner;$('#backTrips').hidden=!owner;const oz=$('#ownerZone');if(oz)oz.hidden=!owner;
  const p2=n=>String(n).padStart(2,'0'),td=new Date(),today=`${td.getFullYear()}-${p2(td.getMonth()+1)}-${p2(td.getDate())}`;
  const ids=Object.keys(ALL.trip||{}),T=id=>ALL.trip[id]||{};
- const st=id=>{const m=T(id);if(m.start&&m.end&&m.start<=today&&today<=m.end)return 'now';if((m.end||'')<today&&m.end)return 'past';return 'next'};
+ const st=id=>{const m=T(id);if(m.completed)return 'done';if(m.start&&m.end&&m.start<=today&&today<=m.end)return 'now';if((m.end||'')<today&&m.end)return 'past';return 'next'};
  const days=a=>Math.round((parse(a)-parse(today))/864e5);
+ const TRASH='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>';
  const card=id=>{const m=T(id),s=st(id),pp=(m.people||[]).filter(p=>p.shares!==false);const y=m.start?parse(m.start).getFullYear():'';
   const dates=m.start?`${fmt(parse(m.start))} – ${fmt(parse(m.end||m.start))} ${y}`:'Dates not set';
-  let chip='',cls=s;if(s==='now'){chip='In progress · day '+(days(today)-days(m.start)+1)}else if(s==='past'){chip='Completed'}else if(m.start){const n=days(m.start);chip=n===0?'Today':n===1?'Tomorrow':'In '+n+' days';if(n<=14)cls+=' soon'}
-  return `<button type="button" class="tripcard ${cls}" data-opentrip="${esc(id)}"><span class="chip">${esc(chip)}</span><div class="dst">${esc(m.destination||'Untitled trip')}</div><div class="dates">${esc(dates)}</div><div class="who">${pp.length<=1?'Solo trip':esc(pp.length+' travellers: '+pp.map(p=>p.name).join(', '))}</div></button>`};
- const now=ids.filter(id=>st(id)==='now'),next=ids.filter(id=>st(id)==='next').sort((a,b)=>String(T(a).start||'9').localeCompare(String(T(b).start||'9'))),past=ids.filter(id=>st(id)==='past').sort((a,b)=>String(T(b).start).localeCompare(String(T(a).start)));
+  let chip='',cls=s;if(s==='now'){chip='In progress · day '+(days(today)-days(m.start)+1)}else if(s==='past'){chip='Finished'}else if(s==='done'){chip='Completed'}else if(m.start){const n=days(m.start);chip=n===0?'Today':n===1?'Tomorrow':'In '+n+' days';if(n<=14)cls+=' soon'}
+  const sid=esc(id),ow=!!(ROLE&&ROLE.owner);
+  let acts='';
+  if(ow&&s==='done')acts=`<button type="button" class="tact" data-tundone="${sid}">Undo complete</button><button type="button" class="ttrash" data-tdel="${sid}" data-label="" aria-label="Delete ${esc(m.destination||'trip')}" title="Delete trip">${TRASH}</button>`;
+  else if(ow&&(s==='past'||s==='now'))acts=`<button type="button" class="tact strong" data-tdone="${sid}">Mark as complete</button>`+(s==='now'?`<button type="button" class="tact warn" data-tdel="${sid}" data-label="Cancel trip">Cancel trip</button>`:'');
+  else if(ow&&s==='next')acts=`<button type="button" class="tact warn" data-tdel="${sid}" data-label="Cancel trip">Cancel trip</button>`;
+  return `<div class="tripwrap ${cls}"><button type="button" class="tripcard ${cls}" data-opentrip="${sid}"><span class="chip">${esc(chip)}</span><div class="dst">${esc(m.destination||'Untitled trip')}</div><div class="dates">${esc(dates)}</div><div class="who">${pp.length<=1?'Solo trip':esc(pp.length+' travellers: '+pp.map(p=>p.name).join(', '))}</div></button>${acts?`<div class="tacts">${acts}</div>`:''}</div>`};
+ const by=(f,o)=>ids.filter(id=>st(id)===f).sort((a,b)=>o*String(T(a).start||'9').localeCompare(String(T(b).start||'9')));
+ const now=by('now',1),next=by('next',1),past=by('past',-1),done=by('done',-1);
  $('#tripList').innerHTML=!ids.length?'<div class="empty-note">No trips yet. Tap Create a travel plan to start.</div>':
-  (now.length?'<div class="tgroup">IN PROGRESS</div>'+now.map(card).join(''):'')+(next.length?'<div class="tgroup">UPCOMING</div>'+next.map(card).join(''):'')+(past.length?'<div class="tgroup">PAST</div>'+past.map(card).join(''):'');}
+  (now.length?'<div class="tgroup">IN PROGRESS</div>'+now.map(card).join(''):'')+(next.length?'<div class="tgroup">UPCOMING</div>'+next.map(card).join(''):'')+(past.length?'<div class="tgroup">FINISHED — MARK AS COMPLETE WHEN YOU\'RE DONE</div>'+past.map(card).join(''):'')+(done.length?'<div class="tgroup">COMPLETED</div>'+done.map(card).join(''):'');}
 function openNewTrip(){const f=$('#ntf');f.reset();f.elements.currency.value='₹';$('#ntMsg').textContent='';$('#ntPeople').hidden=false;$('#ntMe').hidden=true;$('#tripSheet').classList.add('on');setTimeout(()=>f.elements.destination.focus(),50)}
 $('#ntf').elements.kind.addEventListener('change',e=>{const solo=e.target.value==='solo';$('#ntPeople').hidden=solo;$('#ntMe').hidden=!solo});
 $('#ntCancel').addEventListener('click',()=>$('#tripSheet').classList.remove('on'));
@@ -568,6 +582,9 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button');i
  if(t.id==='backTrips'){location.hash='#trips';return}
  if(t.id==='copyGroup'){const m=$('#groupMsg');if(!CFG||!ROLE.owner){m.textContent='Not available.';return}const l=inviteLink(CFG.k);try{await navigator.clipboard.writeText(l);m.textContent='Group invite copied. Paste it in your group chat with Linz, Rakhi and Niranjana.'}catch(err){m.textContent=l}return}
  if(t.dataset.opentrip){setTrip(t.dataset.opentrip);location.hash='#plan';return}
+ if(t.dataset.tdone||t.dataset.tundone){const id=t.dataset.tdone||t.dataset.tundone;await write(()=>db.collection('trip').doc(id).update({completed:!!t.dataset.tdone}));return}
+ if(t.dataset.tdel){const id=t.dataset.tdel,m=(ALL.trip||{})[id]||{};if(!t.classList.contains('confirm')){t.classList.add('confirm');t.textContent='Tap again to delete '+(m.destination||'trip');setTimeout(()=>{if(!t.isConnected)return;t.classList.remove('confirm');t.innerHTML=t.dataset.label?esc(t.dataset.label):'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>'},4000);return}
+  try{await call('apiDeleteTrip',id);delete ALL.trip[id];if(CUR===id){CUR=null;try{localStorage.removeItem('curTrip')}catch(err){}}rev=-1;derive();sync();status((m.destination||'Trip')+' deleted.')}catch(err){status('Could not delete the trip. Check your connection.')}return}
  if(t.id==='delTrip'){if(t.dataset.sure!=='1'){t.dataset.sure='1';t.textContent='Tap again to delete '+(S.meta.destination||'this trip');setTimeout(()=>{t.dataset.sure='';t.textContent='Delete trip'},4000);return}
   try{await call('apiDeleteTrip',CUR);delete ALL.trip[CUR];CUR=null;try{localStorage.removeItem('curTrip')}catch(err){}rev=-1;derive();sync();location.hash='#trips'}catch(err){status('Could not delete the trip.')}}});
 if(!location.hash||location.hash==='#'){window.__defaultView='trips_pending'}
