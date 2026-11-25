@@ -87,7 +87,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 @media(max-width:600px){.pass{grid-template-columns:1fr}.pass .stub{border-left:0;border-top:2px dashed var(--line);flex-direction:row;align-items:baseline;gap:10px}.two{grid-template-columns:1fr}.row{grid-template-columns:62px minmax(0,1fr)}.row .acts{grid-column:1/-1;justify-content:flex-end;margin-top:-6px}.row.notime .acts{grid-column:auto}.t{font-size:19px}.kpis{grid-template-columns:1fr 1fr}.kpis .kpi:first-child{grid-column:1/-1}}
 @media(prefers-reduced-motion:no-preference){.sheet.on form{animation:up .22s ease-out}@keyframes up{from{transform:translateY(40px);opacity:.4}}}
 html.m .pass{grid-template-columns:1fr}html.m .pass .stub{border-left:0;border-top:2px dashed var(--line);flex-direction:row;align-items:baseline;gap:10px}html.m .two{grid-template-columns:1fr}html.m .row{grid-template-columns:62px minmax(0,1fr)}html.m .row .acts{grid-column:1/-1;justify-content:flex-end;margin-top:-6px}html.m .row.notime .acts{grid-column:auto}html.m .t{font-size:19px}html.m .kpis{grid-template-columns:1fr 1fr}html.m .kpis .kpi:first-child{grid-column:1/-1}
-#installBtn[hidden],#setup[hidden]{display:none}
+[hidden]{display:none!important}
 body{padding-bottom:env(safe-area-inset-bottom)}
 </style><script>window.onerror=function(m,s,l){var e=document.getElementById("status");if(e)e.textContent="Error: "+m+" (line "+l+"). Send this to Claude.";};</script></head><body>
 <header class="top">
@@ -107,10 +107,15 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   <button class="btn" id="installBtn" type="button" hidden style="margin:10px 0 0">Install app</button>
 </header>
 <nav><div class="in" id="tabs">
-  <a href="#plan">Itinerary</a><a href="#bookings">Bookings</a><a href="#tickets">Tickets</a><a href="#reminders">Reminders</a><a href="#lists">Packing &amp; to-dos</a><a href="#money">Expenses</a><a href="#trip">Trip &amp; people</a><a href="#print">Print</a>
+  <a href="#trips" id="tripsTab">My trips</a><a href="#plan">Itinerary</a><a href="#bookings">Bookings</a><a href="#tickets">Tickets</a><a href="#reminders">Reminders</a><a href="#lists">Packing &amp; to-dos</a><a href="#money">Expenses</a><a href="#trip">Trip &amp; people</a><a href="#print">Print</a>
 </div></nav>
 <main class="wrap">
-  <section id="v-plan">
+  <section id="v-trips" hidden>
+    <h2>My trips</h2><p class="sub">Each trip has its own itinerary, bookings, tickets, reminders, checklist and expenses.</p>
+    <div class="bar" id="newTripBar" style="margin:0 0 14px"><button class="btn" type="button" id="newTrip">Create a travel plan</button></div>
+    <div class="list" id="tripList"></div>
+  </section>
+  <section id="v-plan" hidden>
     <h2>Day by day</h2><p class="sub">Tap a day, add stops. Everyone sees changes live.</p>
     <div class="bar" style="margin:0 0 14px"><button class="btn" data-new="stops" type="button">Add stop</button></div>
     <div class="days" id="days"></div>
@@ -168,6 +173,7 @@ body{padding-bottom:env(safe-area-inset-bottom)}
       <div class="bar"><button class="btn">Save trip</button><span class="note" id="tripSaved"></span></div>
       <h3 style="margin-top:28px">Invite</h3><p class="note">Send this link only to people on the trip. It connects their phone without typing anything. Anyone with it can see and edit the trip.</p>
       <div class="bar"><button class="btn ghost" type="button" id="copyInvite">Copy invite link</button><button class="btn ghost" type="button" id="forget">Disconnect this phone</button></div><p class="note" id="inviteMsg" role="status"></p>
+      <div id="ownerZone" hidden><h3 style="margin-top:28px">Delete this trip</h3><p class="note">Removes this trip and everything in it for everyone. This can't be undone.</p><div class="bar"><button class="btn ghost" type="button" id="delTrip" style="color:var(--coral);border-color:var(--coral)">Delete trip</button></div></div>
     </form>
   </section>
 </main>
@@ -176,6 +182,15 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 <label class="f"><span>Trip link (Apps Script link ending in /exec)</span><input name="u" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec"></label>
 <label class="f"><span>Trip passcode</span><input name="k" autocomplete="off" autocapitalize="off"></label>
 <p class="note" id="setupMsg" role="status"></p><div class="bar"><button class="btn">Connect</button></div></form></div>
+<div class="sheet" id="tripSheet"><form id="ntf"><h3>Create a travel plan</h3>
+<label class="f"><span>Where are you going?</span><input name="destination" required placeholder="e.g. Jaipur" autocomplete="off"></label>
+<div class="grid2"><label class="f"><span>Departure date</span><input type="date" name="start" required></label><label class="f"><span>Return date</span><input type="date" name="end" required></label></div>
+<label class="f"><span>Who's travelling?</span><select name="kind"><option value="group">A group</option><option value="solo">Just me</option></select></label>
+<label class="f" id="ntPeople"><span>Names, one per line (put yourself first)</span><textarea name="people" rows="4" placeholder="Mridula&#10;Linz&#10;Rakhi"></textarea></label>
+<label class="f" id="ntMe" hidden><span>Your name</span><input name="me" autocomplete="off"></label>
+<label class="f"><span>Currency symbol</span><input name="currency" value="₹" maxlength="4"></label>
+<p class="note" id="ntMsg" role="status"></p>
+<div class="bar"><button class="btn">Create trip</button><button class="btn ghost" type="button" id="ntCancel">Cancel</button></div></form></div>
 <div class="sheet" id="sheet"><form id="sf"><h3 id="sfT"></h3><div id="sfB" style="display:grid;gap:12px"></div><div class="bar"><button class="btn">Save</button><button class="btn ghost" type="button" id="sfX">Cancel</button></div></form></div>
 <script>
 {
@@ -291,7 +306,7 @@ function renderReminders(){const now=new Date(),p2=n=>String(n).padStart(2,'0');
   return `<div class="chk${r.done?' done':''}" style="align-items:flex-start;padding:10px 8px 10px 14px"><input type="checkbox" aria-label="Done" data-rdone="${esc(r.id)}"${r.done?' checked':''}${S.canWrite?'':' disabled'} style="margin-top:4px"><div class="tx"><div class="ttl" style="font-size:16px">${esc(r.text)}</div><div class="meta">${esc(when)}${past&&!r.done?' · <b style="color:var(--coral)">due</b>':''} · For ${esc(forTxt)} · ${esc(emailTxt)}${r.notes?'<br>'+esc(r.notes):''}</div><div class="meta" style="margin-top:4px">${calLink(r.text,r.at,15,r.notes||'')}</div></div>${S.canWrite?`<button class="ib" type="button" data-edit="reminders" data-id="${esc(r.id)}">Edit</button><button class="ib" type="button" data-del="reminders" data-id="${esc(r.id)}">✕</button>`:''}</div>`}).join(''):`<div class="empty-note">No reminders yet. Ideas: web check-in, book the 4 am cab, Marble Palace permit.</div>`}
 function render(){renderHead();renderPlan();renderBookings();renderTickets();renderReminders();renderLists();renderMoney();renderTrip()}
 
-function route(){const v=(location.hash||'#plan').slice(1),ok=['plan','bookings','tickets','reminders','lists','money','trip','print'].includes(v)?v:'plan';
+function route(){const v=(location.hash||'#plan').slice(1),ok=['trips','plan','bookings','tickets','reminders','lists','money','trip','print'].includes(v)?v:(window.__defaultView==='trips'?'trips':'plan');
  document.querySelectorAll('main section').forEach(s=>s.hidden=s.id!=='v-'+ok);
  document.querySelectorAll('#tabs a').forEach(a=>a.toggleAttribute('aria-current',a.getAttribute('href')==='#'+ok))}
 addEventListener('hashchange',route);route();
@@ -382,7 +397,7 @@ $('#tripForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.
  const ppl=people().map(p=>({id:p.id,name:(f.querySelector(`[data-pn="${p.id}"]`).value.trim()||p.name),shares:f.querySelector(`[data-ps="${p.id}"]`).checked,email:(f.querySelector(`[data-pe="${p.id}"]`).value.trim()).slice(0,120)}));
  const body={destination:f.elements.destination.value.trim(),start:f.elements.start.value,end:f.elements.end.value,currency:f.elements.currency.value.trim()||'₹',people:ppl};
  document.activeElement.blur();
- if(await write(()=>db.doc('trip/meta').set(body)))$('#tripSaved').textContent='Saved for everyone.'});
+ if(await write(()=>db.doc('trip/'+CUR).set(body)))$('#tripSaved').textContent='Saved for everyone.'});
 
 
 // ---- PDFs ----
@@ -471,30 +486,58 @@ let CFG=null;try{CFG=JSON.parse(localStorage.getItem(CFG_KEY)||'null')}catch(e){
 (function(){const m=location.hash.match(/^#join=([A-Za-z0-9_-]+)$/);if(!m)return;try{const j=JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))));if(URL_RE.test(j.u)&&j.k){CFG={u:j.u,k:j.k};localStorage.setItem(CFG_KEY,JSON.stringify(CFG))}}catch(e){}history.replaceState(null,'',location.pathname+'#plan')})();
 const rawCall=(cfg,fn,args)=>fetch(cfg.u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,args,key:cfg.k}),redirect:'follow'}).then(r=>r.json()).then(j=>{if(!j.ok)throw new Error(j.error||'Server error');return j.result});
 const call=(fn,...args)=>CFG&&URL_RE.test(CFG.u)?rawCall(CFG,fn,args):Promise.reject(new Error('not-set-up'));
-function inviteLink(){const s=btoa(unescape(encodeURIComponent(JSON.stringify({u:CFG.u,k:CFG.k})))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');return location.origin+location.pathname+'#join='+s}
+function inviteLink(k){const s=btoa(unescape(encodeURIComponent(JSON.stringify({u:CFG.u,k:k||CFG.k})))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');return location.origin+location.pathname+'#join='+s}
 function showSetup(msg){$('#setup').hidden=false;$('#setupMsg').textContent=msg||''}
 const CACHE_KEY='tripData.v1';
 function cacheSave(d){try{localStorage.setItem(CACHE_KEY,JSON.stringify(d))}catch(e){}}
 function cacheLoad(){try{return JSON.parse(localStorage.getItem(CACHE_KEY)||'null')}catch(e){return null}}
-function applyData(d){S.meta={...DEF,...((d.trip||{}).meta||{})};for(const c of ['stops','bookings','lists','expenses','reminders'])S[c]=toArr(d[c]);render()}
+let ALL={trip:{},stops:{},bookings:{},lists:{},expenses:{},reminders:{}},ROLE={owner:false,trip:null},CUR=null;
+try{CUR=localStorage.getItem('curTrip')||null}catch(e){}
+const inTrip=x=>String(x.trip||'meta')===CUR;
+function pickTrip(){const ids=Object.keys(ALL.trip||{});if(ROLE&&!ROLE.owner&&ROLE.trip){CUR=ROLE.trip;return}if(!CUR||!ids.includes(CUR))CUR=ids.includes('meta')?'meta':(ids[0]||null)}
+function derive(){pickTrip();S.meta={...DEF,...((ALL.trip||{})[CUR]||{})};for(const c of ['stops','bookings','lists','expenses','reminders'])S[c]=toArr(ALL[c]).filter(inTrip);render();renderTrips()}
+function setTrip(id){CUR=id;try{localStorage.setItem('curTrip',id)}catch(e){}S.day=null;derive()}
+function applyData(d,role){ALL={trip:{},stops:{},bookings:{},lists:{},expenses:{},reminders:{},...d};if(role)ROLE=role;derive()}
 const toArr=o=>Object.keys(o||{}).map(id=>({...o[id],id}));
 const merge=(a,b)=>{const o={...(a||{})};for(const k in b){const v=b[k];o[k]=(v&&typeof v==='object'&&!Array.isArray(v)&&o[k]&&typeof o[k]==='object'&&!Array.isArray(o[k]))?merge(o[k],v):v}return o};
-function local(c,id,fn){if(c==='trip'){S.meta=fn(S.meta);return}const a=S[c],k=a.findIndex(x=>x.id===id);const nx=fn(k>=0?a[k]:null);if(nx===null){if(k>=0)a.splice(k,1)}else if(k>=0)a[k]={...nx,id};else a.push({...nx,id})}
+function local(c,id,fn){ALL[c]=ALL[c]||{};const cur=ALL[c][id]?{...ALL[c][id],id}:null;const nx=fn(cur);if(nx===null)delete ALL[c][id];else{const o={...nx};delete o.id;ALL[c][id]=o}derive()}
 function op(fn,c,id,arg,apply){local(c,id,apply);render();pending++;return call(fn,c,id,arg).then(r=>{rev=-1;return r}).catch(e=>{rev=-1;throw {code:'error',message:String(e&&e.message||e)}}).finally(()=>{pending--;sync()})}
 db={collection:c=>({doc:id=>({
-  set:d=>op('apiSet',c,id,d,()=>c==='trip'?{...DEF,...d}:{...d}),
+  set:d=>{if(c!=='trip'&&!d.trip)d={...d,trip:CUR};return op('apiSet',c,id,d,()=>({...d}))},
   update:p=>op('apiUpdate',c,id,p,cur=>merge(cur,p)),
   delete:()=>op('apiDelete',c,id,null,()=>null)})}),
  doc:p=>{const [c,id]=p.split('/');return db.collection(c).doc(id)}};
 assetsNS={upload:f=>new Promise((res,rej)=>{if(f.size>15*1024*1024){rej({code:'too_large'});return}const r=new FileReader();r.onload=()=>{const b64=String(r.result).split(',')[1];const t=f.type||(/\.pdf$/i.test(f.name)?'application/pdf':'image/jpeg');call('apiUpload',b64,f.name,t).then(x=>res({id:x.id,contentType:x.type,name:x.name})).catch(e=>rej({code:/PDF or an image/.test(String(e))?'unsupported_type':/15 MB/.test(String(e))?'too_large':'error'}))};r.onerror=()=>rej({code:'error'});r.readAsDataURL(f)})};
-function sync(){if(pending)return;call('apiSync',rev).then(r=>{if(pending)return;if(r.data){applyData(r.data);cacheSave(r.data)}rev=r.rev;if(!live){live=true;status('Live — changes sync for everyone (refreshes every few seconds).')}}).catch(e=>{const m=String(e&&e.message);if(m==='not-set-up'){status('Not connected yet.');showSetup()}else if(/passcode/i.test(m)){status('Passcode no longer matches.');showSetup('The passcode was changed. Enter the new one.')}else status(navigator.onLine===false?'Offline — showing the last saved copy. Changes need a connection.':'Can’t reach the trip data right now — retrying…')})}
-{const c=cacheLoad();if(c)applyData(c)}
+function sync(){if(pending)return;call('apiSync',rev).then(r=>{if(pending)return;if(r.role)ROLE=r.role;if(r.data){applyData(r.data,r.role);cacheSave({d:r.data,role:r.role})}else if(r.role)derive();rev=r.rev;if(!live){live=true;status('Live — changes sync for everyone (refreshes every few seconds).')}}).catch(e=>{const m=String(e&&e.message);if(m==='not-set-up'){status('Not connected yet.');showSetup()}else if(/passcode/i.test(m)){status('Passcode no longer matches.');showSetup('The passcode was changed. Enter the new one.')}else status(navigator.onLine===false?'Offline — showing the last saved copy. Changes need a connection.':'Can’t reach the trip data right now — retrying…')})}
+{const c=cacheLoad();if(c&&c.d)applyData(c.d,c.role);else if(c&&c.trip)applyData(c)}
 $('#setupForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,u=f.elements.u.value.trim(),k=f.elements.k.value.trim(),msg=$('#setupMsg');
  if(!URL_RE.test(u)){msg.textContent='That link should look like https://script.google.com/macros/s/…/exec';return}if(!k){msg.textContent='Enter the passcode.';return}
  msg.textContent='Checking…';try{await rawCall({u,k},'apiSync',[-1]);CFG={u,k};localStorage.setItem(CFG_KEY,JSON.stringify(CFG));$('#setup').hidden=true;rev=-1;live=false;sync()}catch(err){msg.textContent=/passcode/i.test(String(err.message))?'Wrong passcode.':'Could not reach that link. Check it and your connection.'}});
 document.addEventListener('click',async e=>{const t=e.target;
- if(t.id==='copyInvite'){const m=$('#inviteMsg');if(!CFG){m.textContent='Not connected.';return}const l=inviteLink();try{await navigator.clipboard.writeText(l);m.textContent='Invite link copied — paste it in your trip WhatsApp group.'}catch(err){m.textContent=l}}
+ if(t.id==='copyInvite'){const m=$('#inviteMsg');if(!CFG){m.textContent='Not connected.';return}let l;try{l=inviteLink(ROLE.owner?await call('apiTripKey',CUR):CFG.k)}catch(err){m.textContent='Could not create the invite link. Check your connection.';return}try{await navigator.clipboard.writeText(l);m.textContent='Invite link for '+(S.meta.destination||'this trip')+' copied. It opens only this trip. Paste it in that trip\'s group.'}catch(err){m.textContent=l}}
  if(t.id==='forget'){if(t.dataset.sure!=='1'){t.dataset.sure='1';t.textContent='Tap again to disconnect';return}localStorage.removeItem(CFG_KEY);localStorage.removeItem(CACHE_KEY);CFG=null;location.reload()}});
+function renderTrips(){if(window.__defaultView==='trips_pending'&&ROLE&&(ROLE.owner||ROLE.trip)){window.__defaultView=ROLE.owner?'trips':'plan';if(ROLE.owner&&(!location.hash||location.hash==='#'||location.hash==='#plan')){location.hash='#trips'}}
+ const tab=$('#tripsTab');const owner=!!(ROLE&&ROLE.owner);tab.hidden=!owner;$('#newTripBar').hidden=!owner;const oz=$('#ownerZone');if(oz)oz.hidden=!owner;
+ const ids=Object.keys(ALL.trip||{}).sort((a,b)=>String((ALL.trip[b]||{}).start||'').localeCompare(String((ALL.trip[a]||{}).start||'')));
+ const today=new Date().toISOString().slice(0,10);
+ $('#tripList').innerHTML=ids.length?ids.map(id=>{const m=ALL.trip[id]||{},pp=(m.people||[]).filter(p=>p.shares!==false),past=(m.end||'')<today;
+  return `<div class="row notime" style="${id===CUR?'border-color:var(--sky);border-width:2px':''}"><div><div class="ttl" style="font-size:19px">${esc(m.destination||'Untitled trip')}</div><div class="meta">${esc(m.start?fmt(parse(m.start)):'')}${m.end?' – '+esc(fmt(parse(m.end))):''} · ${pp.length<=1?'Solo':esc(pp.length+' travellers')}${past?' · Past':''}${id===CUR?' · <b style="color:var(--sky)">Open now</b>':''}</div></div><div class="acts"><button class="btn${id===CUR?' ghost':''}" type="button" data-opentrip="${esc(id)}" style="min-height:40px">Open</button></div></div>`}).join(''):'<div class="empty-note">No trips yet. Create your first travel plan.</div>';}
+function openNewTrip(){const f=$('#ntf');f.reset();f.elements.currency.value='₹';$('#ntMsg').textContent='';$('#ntPeople').hidden=false;$('#ntMe').hidden=true;$('#tripSheet').classList.add('on');setTimeout(()=>f.elements.destination.focus(),50)}
+$('#ntf').elements.kind.addEventListener('change',e=>{const solo=e.target.value==='solo';$('#ntPeople').hidden=solo;$('#ntMe').hidden=!solo});
+$('#ntCancel').addEventListener('click',()=>$('#tripSheet').classList.remove('on'));
+$('#ntf').addEventListener('submit',async e=>{e.preventDefault();const f=e.target,msg=$('#ntMsg'),el=f.elements;
+ const dest=el.destination.value.trim(),st=el.start.value,en=el.end.value;if(!dest||!st||!en){msg.textContent='Fill in where, and both dates.';return}if(en<st){msg.textContent='Return date is before departure.';return}
+ const names=(el.kind.value==='solo'?[el.me.value.trim()||'Me']:el.people.value.split(/\n|,/).map(s=>s.trim()).filter(Boolean)).slice(0,20);if(!names.length){msg.textContent='Add at least one name.';return}
+ const meta={destination:dest.slice(0,80),start:st,end:en,currency:(el.currency.value.trim()||'₹').slice(0,4),people:names.map((n,i)=>({id:'p'+(i+1),name:n.slice(0,40),shares:true,email:''}))};
+ const btn=f.querySelector('button.btn');btn.disabled=true;msg.textContent='Creating…';
+ try{const r=await call('apiCreateTrip',meta);ALL.trip[r.id]=meta;setTrip(r.id);$('#tripSheet').classList.remove('on');rev=-1;sync();location.hash='#plan'}catch(err){msg.textContent=/organiser/i.test(String(err.message))?'Only the organiser can create trips.':'Could not create the trip. Check your connection.'}
+ btn.disabled=false});
+document.addEventListener('click',async e=>{const t=e.target.closest('button');if(!t)return;
+ if(t.id==='newTrip'){openNewTrip();return}
+ if(t.dataset.opentrip){setTrip(t.dataset.opentrip);location.hash='#plan';return}
+ if(t.id==='delTrip'){if(t.dataset.sure!=='1'){t.dataset.sure='1';t.textContent='Tap again to delete '+(S.meta.destination||'this trip');setTimeout(()=>{t.dataset.sure='';t.textContent='Delete trip'},4000);return}
+  try{await call('apiDeleteTrip',CUR);delete ALL.trip[CUR];CUR=null;try{localStorage.removeItem('curTrip')}catch(err){}rev=-1;derive();sync();location.hash='#trips'}catch(err){status('Could not delete the trip.')}}});
+if(!location.hash||location.hash==='#'){window.__defaultView='trips_pending'}
 let deferredInstall=null;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;const b=$('#installBtn');if(b)b.hidden=false});
 document.addEventListener('click',async e=>{if(e.target.id!=='installBtn'||!deferredInstall)return;deferredInstall.prompt();await deferredInstall.userChoice.catch(()=>{});deferredInstall=null;e.target.hidden=true});
